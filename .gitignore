@@ -3,3 +3,4 @@
 # Added by cargo
 
 /target
+/py_scripts/venv
