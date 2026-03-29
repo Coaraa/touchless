@@ -5,31 +5,19 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-# ---------------------------------------------------------
-# CONFIG
-# ---------------------------------------------------------
-GESTURE_NAME = "fist"      # change this for each gesture
-OUTPUT_FILE = "gesture_data.csv"
-SAMPLE_INTERVAL = 0.1       # record every 0.5 seconds
 
 
+def configure_hand_detector():
+    base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+    options = vision.HandLandmarkerOptions(
+        base_options=base_options,
+        num_hands=1,
+        min_hand_detection_confidence=0.5,
+        min_hand_presence_confidence=0.5,
+        min_tracking_confidence=0.5
+    )
+    return vision.HandLandmarker.create_from_options(options)
 
-# ---------------------------------------------------------
-# Load HandLandmarker (new API)
-# ---------------------------------------------------------
-base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
-options = vision.HandLandmarkerOptions(
-    base_options=base_options,
-    num_hands=1,
-    min_hand_detection_confidence=0.5,
-    min_hand_presence_confidence=0.5,
-    min_tracking_confidence=0.5
-)
-detector = vision.HandLandmarker.create_from_options(options)
-
-# ---------------------------------------------------------
-# Normalization helper
-# ---------------------------------------------------------
 def normalize_landmarks(landmarks):
     wrist = landmarks[0]
     rel = [(lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z) for lm in landmarks]
@@ -37,67 +25,120 @@ def normalize_landmarks(landmarks):
     norm = [(x / max_val, y / max_val, z / max_val) for x, y, z in rel]
     return norm
 
-# ---------------------------------------------------------
-# Create CSV header if needed
-# ---------------------------------------------------------
-try:
-    with open(OUTPUT_FILE, "x", newline="") as f:
+def setup_csv(output_file):
+    try:
+        with open(output_file, "x", newline="") as f:
+            writer = csv.writer(f)
+            header = ["gesture"]
+            for i in range(21):
+                header += [f"x{i}", f"y{i}", f"z{i}"]
+            writer.writerow(header)
+    except FileExistsError:
+        pass
+
+def remove_old_gesture_data(gesture, output_file):
+    rows = []
+    with open(output_file, "r") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            if row[0] != gesture:
+                rows.append(row)
+
+    with open(output_file, "w", newline="") as f:
         writer = csv.writer(f)
-        header = ["gesture"]
-        for i in range(21):
-            header += [f"x{i}", f"y{i}", f"z{i}"]
         writer.writerow(header)
-except FileExistsError:
-    pass
+        writer.writerows(rows)
 
-# ---------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------
-cap = cv2.VideoCapture(0)
-sample_count = 0
-last_sample_time = 0
+def collect_gesture(gesture_name, num_samples = 500, output_file = "data/gesture_data"):
 
-print("Recording automatically every", SAMPLE_INTERVAL, "seconds.")
-print("Press ESC to stop.")
+    sample_interval = 0.1       
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
 
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-    result = detector.detect(mp_image)
+    detector = configure_hand_detector()
+    setup_csv(output_file)
+    remove_old_gesture_data(gesture_name, output_file)
 
-    if result.hand_landmarks:
-        lm = result.hand_landmarks[0]
-        norm = normalize_landmarks(lm)
+    cap = cv2.VideoCapture(0)
+    sample_count = 0
+    last_sample_time = 0
+    recording = False
 
-        # Draw landmarks for feedback
-        for p in lm:
-            h, w, _ = frame.shape
-            cx, cy = int(p.x * w), int(p.y * h)
-            cv2.circle(frame, (cx, cy), 4, (0, 255, 0), -1)
+    print("Recording automatically every", sample_interval, "seconds.")
+    print("Press ESC to stop.")
 
-        # Auto‑record every X seconds
-        now = time.time()
-        if now - last_sample_time >= SAMPLE_INTERVAL:
-            flat = []
-            for x, y, z in norm:
-                flat += [x, y, z]
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-            with open(OUTPUT_FILE, "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow([GESTURE_NAME] + flat)
+        if not recording:
+            cv2.putText(frame, "Presse SPACE to Start recoding",(30, 50), cv2.FONT_HERSHEY_SIMPLEX,1.0, (0, 255, 255), 2)
+            cv2.imshow("Data Collector", frame)
+            key = cv2.waitKey(1)
 
-            sample_count += 1
-            last_sample_time = now
-            print(f"Saved sample #{sample_count}")
+            if key == 32:  # SPACE key
+                    recording = True
+                    print("Recording started.")
+            elif key == 27:  # ESC
+                    print("Cancelled.")
+                    break
+            continue
 
-    cv2.imshow("Data Collector", frame)
-    key = cv2.waitKey(1)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        result = detector.detect(mp_image)
 
-    if key == 27:  # ESC
-        break
+        if result.hand_landmarks:
+            lm = result.hand_landmarks[0]
+            norm = normalize_landmarks(lm)
 
-cap.release()
-cv2.destroyAllWindows()
+            for p in lm:
+                h, w, _ = frame.shape
+                cx, cy = int(p.x * w), int(p.y * h)
+                cv2.circle(frame, (cx, cy), 4, (0, 255, 0), -1)
+
+            now = time.time()
+            if now - last_sample_time >= sample_interval:
+                flat = []
+                for x, y, z in norm:
+                    flat += [x, y, z]
+
+                with open(output_file, "a", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([gesture_name] + flat)
+
+                sample_count += 1
+                last_sample_time = now
+                print(f"Saved sample {sample_count}/{num_samples}")
+
+        cv2.putText(frame, f"Recording {gesture_name}: {sample_count}/{num_samples}",
+                            (30, 50), cv2.FONT_HERSHEY_SIMPLEX,
+                            1.0, (0, 255, 0), 2)
+
+        cv2.imshow("Data Collector", frame)
+        key = cv2.waitKey(1)
+
+        if key == 27:  # ESC
+            break
+
+        if sample_count >= num_samples:
+            print("Done.")
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python collect.py <gesture_name> [num_samples] [output_file]")
+        sys.exit(1)
+
+    gesture_name = sys.argv[1]
+    num_samples = int(sys.argv[2]) if len(sys.argv) > 2 else 500
+    output_file = sys.argv[3] if len(sys.argv) > 3 else "data/gesture_data.csv"
+
+    collect_gesture(gesture_name, num_samples, output_file)
+
+
