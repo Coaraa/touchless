@@ -4,7 +4,22 @@ import pyautogui
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+import math
 
+def compute_motion_first_last(first_frame, last_frame):
+    features = []
+
+    for i in range(21):
+        x0, y0, z0 = first_frame[i]
+        x1, y1, z1 = last_frame[i]
+        distance_x = x1 - x0
+        distance_y = y1 - y0
+        distance_z = z1 - z0
+        magnitude = math.sqrt(distance_x*distance_x + distance_y*distance_y + distance_z*distance_z)
+        angle = math.atan2(distance_y, distance_x)
+        features.extend([magnitude, angle])
+
+    return features
 
 def normalize_landmarks(landmarks):
     wrist = landmarks[0]
@@ -19,9 +34,10 @@ def get_palm_center(lm):
     ys = [lm[i].y for i in palm_ids]
     return sum(xs) / len(xs), sum(ys) / len(ys)
 
-def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_labels.pkl", camera_index=0):
+def run_gesture_mouse (model_path="gesture_model_mouvement_xgb.pkl", labels_path="gesture_labels_mouvement.pkl", camera_index=0):
 
-    CAMERA_MARGIN = 0.15  
+    CAMERA_MARGIN = 0.15
+      
 
 
     model = joblib.load(model_path)
@@ -51,6 +67,12 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
     model_activated = False
 
     cap = cv2.VideoCapture(0)
+    first_frame = None
+    last_frame = None
+    frame_counter = 0
+    num_samples = 20 
+    gesture_name = "None"
+
 
     print("Gesture mouse control active. Press ESC to quit.")
 
@@ -94,12 +116,19 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
             continue
 
         norm = normalize_landmarks(lm)
-        flat_vector = []
-        for x, y, z in norm:
-            flat_vector += [x, y, z]
 
-        pred = model.predict([flat_vector])[0]
-        gesture_name = label_encoder.inverse_transform([pred])[0]
+        if frame_counter == 0:
+            first_frame = norm
+
+        elif frame_counter == num_samples:
+            last_frame = norm
+
+            motion_vector = compute_motion_first_last(first_frame, last_frame)
+
+            pred = model.predict([motion_vector])[0]
+            gesture_name = label_encoder.inverse_transform([pred])[0]
+
+            frame_counter = -1
 
         for position in lm:
             h, w, _ = frame.shape
@@ -131,7 +160,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
         if gesture_name == "Deactivate":
             model_activated = False
 
-        if model_activated:
+        if frame_counter == -1:
             
             if gesture_name == "Draw":
                 drawing_mode = True
@@ -156,6 +185,8 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
                     pyautogui.mouseUp()
                     mouse_held = False
 
+        frame_counter += 1
+
         cv2.putText(frame, f"Gesture: {gesture_name}", (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
         
@@ -172,7 +203,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 if __name__ == "__main__":
     import sys
 
-    model_path = sys.argv[1] if len(sys.argv) > 1 else "gesture_model_xgb.pkl"
-    labels_path = sys.argv[2] if len(sys.argv) > 2 else "gesture_labels.pkl"
+    model_path = sys.argv[1] if len(sys.argv) > 1 else "gesture_model_mouvement_xgb.pkl"
+    labels_path = sys.argv[2] if len(sys.argv) > 2 else "gesture_labels_mouvement.pkl"
 
     run_gesture_mouse(model_path, labels_path)
