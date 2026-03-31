@@ -2,8 +2,7 @@ use eframe::egui;
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        // 1. MODIFICATION DE LA TAILLE DE LA FENÊTRE (Largeur: 800, Hauteur: 600)
-        viewport: egui::ViewportBuilder::default().with_inner_size([800.0, 600.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([1200.0, 700.0]),
         ..Default::default()
     };
 
@@ -26,86 +25,40 @@ struct TouchlessApp {}
 
 impl eframe::App for TouchlessApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // 2. PASSAGE EN MODE CLAIR FORCÉ
         ctx.set_visuals(egui::Visuals::light());
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add_space(40.0);
+            ui.add_space(60.0);
 
-            // Définition de couleurs personnalisées (Format RVB)
-            // let color_blue = egui::Color32::from_rgb(210, 230, 255);
+            let color_blue = egui::Color32::from_rgb(210, 230, 255);
             let color_orange = egui::Color32::from_rgb(255, 230, 180);
 
-            // On pré-calcule la taille totale de notre groupe de 5 boutons.
-            // 5 boutons de 80 pixels + 4 espaces de 15 pixels entre eux
-            let total_width = (80.0 * 5.0) + (15.0 * 4.0);
-
-            ui.horizontal(|ui| {
-                // 1. L'ASTUCE EST ICI : On ajoute un espace vide dynamique à gauche
-                // Ça pousse tout le reste vers la droite de manière parfaitement centrée
-                let espace_a_gauche = (ui.available_width() - total_width) / 2.0;
-                ui.add_space(espace_a_gauche);
-
-                // 2. On ajoute nos boutons stylisés comme avant
-                let btn_grab = egui::Button::new(egui::RichText::new("✊\nGrab").size(20.0))
-                    .min_size(egui::vec2(80.0, 80.0))
-                    .rounding(40.0)
-                    .fill(egui::Color32::from_rgb(210, 230, 255));
-                if ui.add(btn_grab).clicked() {
-                    println!("Action: Grab !");
-                }
-
-                ui.add_space(15.0);
-
-                let btn_screen = egui::Button::new(egui::RichText::new("✌️\nScreen").size(20.0))
-                    .min_size(egui::vec2(80.0, 80.0))
-                    .rounding(40.0)
-                    .fill(egui::Color32::from_rgb(210, 230, 255));
-                if ui.add(btn_screen).clicked() {
-                    println!("Action: Screen !");
-                }
-
-                ui.add_space(15.0);
-
-                let btn_move = egui::Button::new(egui::RichText::new("✋\nMove").size(20.0))
-                    .min_size(egui::vec2(80.0, 80.0))
-                    .rounding(40.0)
-                    .fill(egui::Color32::from_rgb(210, 230, 255));
-                if ui.add(btn_move).clicked() {
-                    println!("Action: Move !");
-                }
-
-                ui.add_space(15.0);
-
-                let btn_click = egui::Button::new(egui::RichText::new("👆\nClick").size(20.0))
-                    .min_size(egui::vec2(80.0, 80.0))
-                    .rounding(40.0)
-                    .fill(egui::Color32::from_rgb(210, 230, 255));
-                if ui.add(btn_click).clicked() {
-                    println!("Action: Click !");
-                }
-
-                ui.add_space(15.0);
-
-                let btn_swipe = egui::Button::new(egui::RichText::new("👋\nSwipe").size(20.0))
-                    .min_size(egui::vec2(80.0, 80.0))
-                    .rounding(40.0)
-                    .fill(egui::Color32::from_rgb(210, 230, 255));
-                if ui.add(btn_swipe).clicked() {
-                    println!("Action: Swipe !");
-                }
+            // 1. ASTUCE POUR PRENDRE TOUTE LA PLACE : 
+            // On divise l'espace disponible en 5 colonnes égales
+            ui.columns(5, |columns| {
+                // Colonne 0 : Grab
+                draw_gesture_item(&mut columns[0], "✊", "Grab", color_blue, color_orange);
+                
+                // Colonne 1 : Screen
+                draw_gesture_item(&mut columns[1], "✌️", "Screen", color_blue, color_orange);
+                
+                // Colonne 2 : Move
+                draw_gesture_item(&mut columns[2], "✋", "Move", color_blue, color_orange);
+                
+                // Colonne 3 : Click
+                draw_gesture_item(&mut columns[3], "👆", "Click", color_blue, color_orange);
+                
+                // Colonne 4 : Swipe
+                draw_gesture_item(&mut columns[4], "👋", "Swipe", color_blue, color_orange);
             });
 
-            
-
-            ui.add_space(200.0);
+            ui.add_space(150.0);
 
             ui.vertical_centered(|ui| {
-                // Bouton Train stylisé
                 let btn_train = egui::Button::new(egui::RichText::new("Train").size(24.0))
-                    .min_size(egui::vec2(150.0, 50.0)) // Bouton plus large
-                    .rounding(10.0)                    // Bords légèrement arrondis
-                    .fill(color_orange);               // Fond jaune/orange
+                    .min_size(egui::vec2(150.0, 50.0))
+                    .rounding(10.0)
+                    .fill(color_orange);
                 
                 if ui.add(btn_train).clicked() {
                     println!("Lancement de l'entraînement...");
@@ -113,4 +66,31 @@ impl eframe::App for TouchlessApp {
             });
         });
     }
+}
+
+// 2. FONCTION POUR DESSINER COMME SUR LA MAQUETTE
+// Cette fonction gère le cercle bleu (avec l'émoji géant) et le petit rectangle orange en dessous
+fn draw_gesture_item(ui: &mut egui::Ui, emoji: &str, name: &str, color_blue: egui::Color32, color_orange: egui::Color32) {
+    ui.vertical_centered(|ui| {
+        // Le bouton circulaire avec l'émoji géant
+        let circle_btn = egui::Button::new(egui::RichText::new(emoji).size(70.0))
+            .min_size(egui::vec2(140.0, 140.0)) // Plus grand pour prendre de la place
+            .rounding(70.0) // Arrondi parfait (la moitié de la taille)
+            .fill(color_blue);
+        
+        if ui.add(circle_btn).clicked() {
+            println!("Action: {} cliquée !", name);
+        }
+
+        ui.add_space(15.0);
+
+        // Le label orange en dessous (on utilise un bouton "inactif" pour simuler l'encadré)
+        let label_box = egui::Button::new(egui::RichText::new(name).size(20.0).color(egui::Color32::BLACK))
+            .min_size(egui::vec2(100.0, 35.0))
+            .fill(color_orange)
+            .rounding(5.0);
+        
+        // On l'ajoute à l'UI sans faire de "if clicked()" car c'est juste visuel
+        let _ = ui.add(label_box); 
+    });
 }
