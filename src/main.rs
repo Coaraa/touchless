@@ -6,11 +6,18 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default().with_inner_size([800.0, 600.0]),
         ..Default::default()
     };
-    
+
+    // In your main function or wherever you call eframe::run_native
     eframe::run_native(
-        "Touchless - Version 1.0",
+        "Touchless App",
         options,
-        Box::new(|_cc| Box::<TouchlessApp>::default()),
+        Box::new(|_cc| {
+            // 1. Create your app
+            let app = TouchlessApp::default();
+
+            // 2. Wrap it in Box and then Ok
+            Ok(Box::new(app))
+        }),
     )
 }
 
