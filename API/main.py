@@ -14,12 +14,24 @@ app = FastAPI()
 async def Welcome():
     return {"message": "Hello from FastAPI!"}
 
-@app.get("/run/static")
+@app.get("/static/run")
 def run():
 
     script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_run.py")
     subprocess.Popen([sys.executable, script_path])
-
     return {"message": "Lancement du modele statique !"}
 
+@app.get("/static/capture")
+def run():
 
+    val1 = "Grab"
+    script_path = os.path.join(PYSCRIPT_DIR, "static_model/data_capture.py")
+    subprocess.Popen([sys.executable, script_path, val1])
+    return {"message": "Lancement de la capture des mouvements !"}
+
+# @app.get("/run/static")
+# def run():
+#
+#     script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_run.py")
+#     subprocess.Popen([sys.executable, script_path])
+#     return {"message": "Lancement du modele statique !"}

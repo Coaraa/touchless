@@ -5,6 +5,16 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import numpy as np
+import os
+
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/static_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
 
 def preprocess(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -14,7 +24,8 @@ def preprocess(frame):
 
 
 def configure_hand_detector(n_hands):
-    base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+    hand_task_path = get_path("hand_landmarker.task")
+    base_options = python.BaseOptions(model_asset_path=hand_task_path)
     options = vision.HandLandmarkerOptions(
         base_options=base_options,
         num_hands=n_hands,
@@ -63,10 +74,11 @@ def collect_gesture(gesture_name, num_samples = 500, n_hands = 1, output_file = 
 
     sample_interval = 0.1       
 
+    OUTPUT_FILE = os.path.join(BASE_DIR, output_file)
 
     detector = configure_hand_detector(n_hands)
-    setup_csv(output_file, n_hands)
-    remove_old_gesture_data(gesture_name, output_file)
+    setup_csv(OUTPUT_FILE, n_hands)
+    remove_old_gesture_data(gesture_name, OUTPUT_FILE)
 
     cap = cv2.VideoCapture(0)
     sample_count = 0
@@ -128,7 +140,7 @@ def collect_gesture(gesture_name, num_samples = 500, n_hands = 1, output_file = 
                 for x, y, z in norm:
                     flat += [x, y, z]
 
-                with open(output_file, "a", newline="") as f:
+                with open(OUTPUT_FILE, "a", newline="") as f:
                     writer = csv.writer(f)
                     if(n_hands == 2 and len(result.hand_landmarks) == 2):
                         writer.writerow([gesture_name] + flat + flat2)
