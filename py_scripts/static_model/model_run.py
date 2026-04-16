@@ -2,8 +2,18 @@ import cv2
 import joblib
 import pyautogui
 import mediapipe as mp
+import os
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/static_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
 
 
 def normalize_landmarks(landmarks):
@@ -38,6 +48,13 @@ def get_2h_center(lm, lm2):
 
 def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_labels.pkl", model_path_2h="gesture_model_xgb_2h.pkl", labels_path_2h="gesture_labels_2h.pkl", n_hands = 1):
 
+    # Conversion des noms de fichiers en chemins absolus
+    model_path = get_path(model_path)
+    labels_path = get_path(labels_path)
+    model_path_2h = get_path(model_path_2h)
+    labels_path_2h = get_path(labels_path_2h)
+    hand_task_path = get_path("hand_landmarker.task")
+
     if (n_hands == 1):
         model = joblib.load(model_path)
         label_encoder = joblib.load(labels_path)
@@ -49,7 +66,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
         label_encoder = joblib.load(labels_path_2h)
         camera_margin - 0.45
 
-    base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+    base_options = python.BaseOptions(model_asset_path=hand_task_path)
     options = vision.HandLandmarkerOptions(
         base_options=base_options,
         num_hands=n_hands,
@@ -212,7 +229,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
                 model = joblib.load(model_path)
                 label_encoder = joblib.load(labels_path)
 
-                base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+                base_options = python.BaseOptions(model_asset_path=hand_task_path)
                 options = vision.HandLandmarkerOptions(
                     base_options=base_options,
                     num_hands= 1,
@@ -229,7 +246,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
                 model = joblib.load(model_path_2h)
                 label_encoder = joblib.load(labels_path_2h)
 
-                base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+                base_options = python.BaseOptions(model_asset_path=hand_task_path)
                 options = vision.HandLandmarkerOptions(
                     base_options=base_options,
                     num_hands= 2,
@@ -264,7 +281,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 
         cv2.putText(frame, f"Gesture: {gesture_name}", (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
-        
+
 
         cv2.imshow("Gesture Mouse Control", frame)
         key = cv2.waitKey(1)
