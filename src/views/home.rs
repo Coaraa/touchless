@@ -1,5 +1,7 @@
 use eframe::egui;
 use crate::app::View;
+use reqwest;
+
 
 pub fn show(ctx: &egui::Context, current_view: &mut View) {
     let dark_blue = egui::Color32::from_rgb(31, 40, 51); 
@@ -52,7 +54,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View) {
                             ui.add_space(15.0);
                             
                             ui.vertical(|ui| {
-                                ui.label(egui::RichText::new("Modèle IA Touchless").strong().color(egui::Color32::BLACK).size(16.0));
+                                ui.label(egui::RichText::new("Modèle IA Touchless statique").strong().color(egui::Color32::BLACK).size(16.0));
                                 ui.label(egui::RichText::new("OpenCV & Pytorch").color(egui::Color32::DARK_GRAY));
                             });
                             
@@ -63,7 +65,20 @@ pub fn show(ctx: &egui::Context, current_view: &mut View) {
                                     .min_size(egui::vec2(100.0, 35.0));
                                 
                                 if ui.add(start_btn).clicked() {
-                                    println!("Lancement du contrôle !");
+                                    println!("Lancement de la requête API statique");
+
+                                    std::thread::spawn(|| {
+                                        let response = reqwest::blocking::get("http://127.0.0.1:8000/static/run");
+
+                                        match response {
+                                            Ok(res) => {
+                                                if let Ok(body) = res.text() {
+                                                    println!("Réponse reçue : {}", body);
+                                                }
+                                            }
+                                            Err(e) => println!("Erreur API : {}", e),
+                                        }
+                                    });
                                 }
                             });
                         });
@@ -81,7 +96,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View) {
                             ui.add_space(15.0);
 
                             ui.vertical(|ui| {
-                                ui.label(egui::RichText::new("Modèle IA Touchless").strong().color(egui::Color32::BLACK).size(16.0));
+                                ui.label(egui::RichText::new("Modèle IA Touchless dynamique").strong().color(egui::Color32::BLACK).size(16.0));
                                 ui.label(egui::RichText::new("OpenCV & Pytorch").color(egui::Color32::DARK_GRAY));
                             });
 
@@ -92,7 +107,20 @@ pub fn show(ctx: &egui::Context, current_view: &mut View) {
                                     .min_size(egui::vec2(100.0, 35.0));
 
                                 if ui.add(start_btn).clicked() {
-                                    println!("Lancement du contrôle !");
+                                    println!("Lancement de la requête API dynamique");
+
+                                    std::thread::spawn(|| {
+                                        let response = reqwest::blocking::get("http://127.0.0.1:8000/dynamic/run");
+
+                                        match response {
+                                            Ok(res) => {
+                                                if let Ok(body) = res.text() {
+                                                    println!("Réponse reçue : {}", body);
+                                                }
+                                            }
+                                            Err(e) => println!("Erreur API : {}", e),
+                                        }
+                                    });
                                 }
                             });
                         });
