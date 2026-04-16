@@ -69,6 +69,35 @@ pub fn show(ctx: &egui::Context, current_view: &mut View) {
                         });
                     });
 
+                    block_frame.show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+
+                        ui.horizontal(|ui| {
+                            let icon_frame = egui::Frame::none().fill(egui::Color32::BLACK).rounding(10.0).inner_margin(15.0);
+                            icon_frame.show(ui, |ui| {
+                                ui.label(egui::RichText::new("IA").color(egui::Color32::WHITE).size(20.0).strong());
+                            });
+
+                            ui.add_space(15.0);
+
+                            ui.vertical(|ui| {
+                                ui.label(egui::RichText::new("Modèle IA Touchless").strong().color(egui::Color32::BLACK).size(16.0));
+                                ui.label(egui::RichText::new("OpenCV & Pytorch").color(egui::Color32::DARK_GRAY));
+                            });
+
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let start_btn = egui::Button::new(egui::RichText::new("Lancer").color(egui::Color32::WHITE))
+                                    .fill(dark_blue)
+                                    .rounding(15.0)
+                                    .min_size(egui::vec2(100.0, 35.0));
+
+                                if ui.add(start_btn).clicked() {
+                                    println!("Lancement du contrôle !");
+                                }
+                            });
+                        });
+                    });
+
                     ui.allocate_space(ui.available_size());
                 });
             });
