@@ -6,6 +6,94 @@ import os
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+import csv
+import time
+
+def init_logger():
+    with open("gesture_runtime_log.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "timestamp",
+            "n_hands",
+            "gesture_pred",
+            "gesture_name",
+            "palm_x",
+            "palm_y",
+            "smooth_x",
+            "smooth_y",
+            "raw_vector_len",
+            "model_activated"
+        ])
+
+def log_sample(n_hands, pred, gesture_name, palm_x, palm_y, smooth_x, smooth_y, vector_len, activated):
+    with open("gesture_runtime_log.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            time.perf_counter(),
+            n_hands,
+            pred,
+            gesture_name,
+            palm_x,
+            palm_y,
+            smooth_x,
+            smooth_y,
+            vector_len,
+            activated
+        ])
+
+def init_profile():
+    with open("gesture_profile.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "frame",
+            "dt_frame",
+            "t_capture",
+            "t_mediapipe",
+            "t_normalize",
+            "t_predict",
+            "t_mouse",
+            "t_total"
+        ])
+
+def log_profile(frame_id, dt_frame, t_cap, t_mp, t_norm, t_pred, t_mouse, t_total):
+    with open("gesture_profile.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            frame_id,
+            dt_frame,
+            t_cap,
+            t_mp,
+            t_norm,
+            t_pred,
+            t_mouse,
+            t_total
+        ])
+
+
+def init_mp_log():
+    with open("mediapipe_log.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "timestamp",
+            "status",
+            "hand_label",
+            "hand_confidence",
+            "num_hands"
+        ])
+
+def log_mp(status, hand_label, hand_conf, num_hands):
+    with open("mediapipe_log.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            time.perf_counter(),
+            status,
+            hand_label,
+            hand_conf,
+            num_hands
+        ])
+
+
+
 # Configuration des chemins automatiques
 # BASE_DIR sera le dossier 'py_scripts/static_model/'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -78,26 +166,10 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 
     screen_w, screen_h = pyautogui.size()
     smooth_x, smooth_y = 0, 0
-    alpha = 0.25
+    alpha = 0.4
 
     mouse_held = False
     drawing_mode = False 
-
-    dummy_landmark =  [
-    type("LM", (), {"x": 0.0,  "y": 0.0,  "z": 0.0})(),  
-    type("LM", (), {"x": 0.02, "y": 0.00, "z": 0.0})(),
-    type("LM", (), {"x": 0.03, "y": 0.01, "z": 0.0})(),
-    type("LM", (), {"x": 0.04, "y": 0.02, "z": 0.0})(),
-    type("LM", (), {"x": 0.05, "y": 0.03, "z": 0.0})(),
-    type("LM", (), {"x": 0.02, "y":-0.02, "z": 0.0})(),
-    type("LM", (), {"x": 0.03, "y":-0.03, "z": 0.0})(),
-    type("LM", (), {"x": 0.04, "y":-0.04, "z": 0.0})(),
-    type("LM", (), {"x": 0.05, "y":-0.05, "z": 0.0})(),
-    ] + [
-        type("LM", (), {"x": 0.01, "y": 0.01, "z": 0.0})()
-        for _ in range(21 - 9)
-    ]
-
 
     last_good_landmarks = None
     last_good_landmarks2 = None
@@ -111,8 +183,21 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 
     print("Gesture mouse control active. Press ESC to quit.")
 
+    init_logger()
+    init_profile()
+    init_mp_log()
+    last_frame_time = time.perf_counter()
+    frame_id = 0
+
+
     while True:
+        frame_start = time.perf_counter()
+        dt_frame = frame_start - last_frame_time
+        last_frame_time = frame_start
+
+        t0 = time.perf_counter()
         ret, frame = cap.read()
+        t_capture = time.perf_counter() - t0
         if not ret:
             break
 
@@ -126,8 +211,30 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
 
+        t0 = time.perf_counter()
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
         result = detector.detect(mp_image)
+
+        if not result.hand_landmarks:
+            log_mp("NO_HAND", "", 0.0, 0)
+        else:
+            num_hands = len(result.hand_landmarks)
+
+            for i in range(num_hands):
+                hand_info = result.handedness[i][0]
+                hand_label = hand_info.category_name
+                hand_conf = hand_info.score
+
+
+                if hand_conf < 0.5:
+                    status = "LOW_CONF"
+                else:
+                    status = "HAND_OK"
+
+                log_mp(status, hand_label, hand_conf, num_hands)
+
+                t_mediapipe = time.perf_counter() - t0
+
 
         if result.hand_landmarks:
             if(n_hands == 1):
@@ -163,8 +270,11 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
             if key == 27:
                 break
             continue
-
+        
+        t0 = time.perf_counter()
         norm = normalize_landmarks(lm)
+        t_normalize = time.perf_counter() - t0
+
         flat_vector = []
         for x, y, z in norm:
             flat_vector += [x, y, z]
@@ -175,12 +285,15 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
             for x, y, z in norm2:
                 flat_vector2 += [x, y, z]
 
+        t0 = time.perf_counter()
         if(n_hands == 1):    
             pred = model.predict([flat_vector])[0]
         if (n_hands == 2):
             pred = model.predict([flat_vector + flat_vector2])[0]
+        t_predict = time.perf_counter() - t0
 
         gesture_name = label_encoder.inverse_transform([pred])[0]
+
 
         for position in lm:
             h, w, _ = frame.shape
@@ -197,6 +310,24 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
             palm_center_x, palm_center_y = get_palm_center(lm)
         if(n_hands == 2):
             palm_center_x, palm_center_y = get_2h_center(lm, lm2)
+
+        vector_len = len(flat_vector) if n_hands == 1 else len(flat_vector + flat_vector2)
+
+        smooth_x_norm = (1 -smooth_x / screen_w)
+        smooth_y_norm = smooth_y / screen_h
+
+
+        log_sample(
+            n_hands,
+            pred,
+            gesture_name,
+            palm_center_x,
+            palm_center_y,
+            smooth_x_norm,
+            smooth_y_norm,
+            vector_len,
+            model_activated
+        )
 
         left = camera_margin
         right = 1 - camera_margin
@@ -261,10 +392,12 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
             else:
                 drawing_mode = False
 
+            t0 = time.perf_counter()
             if mouse_held and drawing_mode:
                 pyautogui.dragTo(smooth_x, smooth_y, duration=0, button='left')
             else:
                 pyautogui.moveTo(smooth_x, smooth_y)
+            t_mouse = time.perf_counter() - t0
 
             if gesture_name == "Click":
                 pyautogui.click()
@@ -279,6 +412,18 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
                     pyautogui.mouseUp()
                     mouse_held = False
 
+            t_total = time.perf_counter() - frame_start
+            log_profile(
+                frame_id,
+                dt_frame,
+                t_capture,
+                t_mediapipe,
+                t_normalize,
+                t_predict,
+                t_mouse,
+                t_total
+            )
+
         cv2.putText(frame, f"Gesture: {gesture_name}", (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
 
@@ -286,7 +431,11 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
         cv2.imshow("Gesture Mouse Control", frame)
         key = cv2.waitKey(1)
         if key == 27:
-            break
+            break       
+        
+    
+        frame_id += 1
+
   
 
     cap.release()
