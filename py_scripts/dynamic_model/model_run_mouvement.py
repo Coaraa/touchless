@@ -5,6 +5,15 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import math
+import os
+
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/dynamic_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
 
 def compute_motion_first_last(first_frame, last_frame):
     features = []
@@ -36,6 +45,10 @@ def get_palm_center(lm):
 
 def run_gesture_mouse (model_path="gesture_model_mouvement_xgb.pkl", labels_path="gesture_labels_mouvement.pkl", camera_index=0):
 
+    model_path = get_path(model_path)
+    labels_path = get_path(labels_path)
+    hand_landmarker = get_path("hand_landmarker.task")
+
     CAMERA_MARGIN = 0.15
       
 
@@ -43,7 +56,7 @@ def run_gesture_mouse (model_path="gesture_model_mouvement_xgb.pkl", labels_path
     model = joblib.load(model_path)
     label_encoder = joblib.load(labels_path)
 
-    base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
+    base_options = python.BaseOptions(model_asset_path=hand_landmarker)
     options = vision.HandLandmarkerOptions(
         base_options=base_options,
         num_hands=1,
