@@ -9,6 +9,11 @@ from mediapipe.tasks.python import vision
 import csv
 import time
 
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/static_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 def init_logger():
     with open("gesture_runtime_log.csv", "w", newline="") as f:
         writer = csv.writer(f)
@@ -91,12 +96,6 @@ def log_mp(status, hand_label, hand_conf, num_hands):
             hand_conf,
             num_hands
         ])
-
-
-
-# Configuration des chemins automatiques
-# BASE_DIR sera le dossier 'py_scripts/static_model/'
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_path(filename):
