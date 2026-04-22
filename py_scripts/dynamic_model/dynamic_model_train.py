@@ -9,9 +9,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Dropout, BatchNormalization
 
-# ---------------------------------------------------------
-# 1. CHARGEMENT DES DONNÉES BRUTES (POSITIONS SEULES)
-# ---------------------------------------------------------
+
 def load_sequence_data(data_file="data/dynamic_gestures.csv", target_frames=30):
     df = pd.read_csv(data_file)
     sequences = []
@@ -30,9 +28,7 @@ def load_sequence_data(data_file="data/dynamic_gestures.csv", target_frames=30):
         
     return np.array(sequences), np.array(labels)
 
-# ---------------------------------------------------------
-# 2. AUGMENTATION DES DONNÉES (Sur les positions)
-# ---------------------------------------------------------
+
 def augment_data(X_train, y_train, num_augments_per_seq=5):
     X_aug = []
     y_aug = []
@@ -60,9 +56,7 @@ def augment_data(X_train, y_train, num_augments_per_seq=5):
             
     return np.array(X_aug), np.array(y_aug)
 
-# ---------------------------------------------------------
-# 3. FUSION : CALCUL DES DELTAS ET CONCATÉNATION
-# ---------------------------------------------------------
+
 def compute_fusion(X):
     """
     Prend un tenseur de dimensions (Nb_Séquences, 30_frames, 63_positions)
@@ -76,9 +70,7 @@ def compute_fusion(X):
     X_fusion = np.concatenate((X, deltas), axis=2)
     return X_fusion
 
-# ---------------------------------------------------------
-# 4. CONSTRUCTION DU MODÈLE 1D CNN
-# ---------------------------------------------------------
+
 def build_1d_cnn(input_shape, num_classes):
     model = Sequential([
         Conv1D(filters=64, kernel_size=3, activation='relu', input_shape=input_shape),
@@ -100,11 +92,9 @@ def build_1d_cnn(input_shape, num_classes):
                   metrics=['accuracy'])
     return model
 
-# ---------------------------------------------------------
-# 5. PIPELINE D'ENTRAÎNEMENT
-# ---------------------------------------------------------
+
 def train_dynamic_model(data_file="data/dynamic_gestures.csv",
-                        model_out="gesture_model_1dcnn.keras",
+                        model_out="gesture_model.keras",
                         labels_out="gesture_labels_dynamic.pkl"):
 
     print("Chargement des séquences...")
@@ -120,14 +110,11 @@ def train_dynamic_model(data_file="data/dynamic_gestures.csv",
     
     print(f"Classes détectées ({num_classes}): {label_encoder.classes_}")
 
-    # Séparation Train / Val / Test (Toujours sur les positions 63 features)
     X_train, X_temp, y_train, y_temp = train_test_split(X, y_encoded, test_size=0.3, random_state=42, stratify=y_encoded)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp)
 
-    # Augmentation sur le Train Set (Positions 63 features)
     X_train_aug, y_train_aug = augment_data(X_train, y_train, num_augments_per_seq=9) 
 
-    # --- TRANSFORMATION EN FUSION (126 features) ---
     print("Calcul des deltas et fusion (Position + Vitesse)...")
     X_train_fusion = compute_fusion(X_train_aug)
     X_val_fusion = compute_fusion(X_val)
@@ -136,7 +123,6 @@ def train_dynamic_model(data_file="data/dynamic_gestures.csv",
     print(f"Format final des données d'entrée : {X_train_fusion.shape}")
 
     print("Construction du modèle 1D CNN...")
-    # On spécifie 126 features en entrée
     model = build_1d_cnn(input_shape=(30, 126), num_classes=num_classes)
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
