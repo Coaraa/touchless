@@ -13,9 +13,12 @@ import time
 def configure_hand_detector():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     model_path = os.path.join(script_dir, "hand_landmarker.task")
+    
     base_options = python.BaseOptions(model_asset_path=model_path)
+    
     options = vision.HandLandmarkerOptions(
         base_options=base_options,
+        running_mode=vision.RunningMode.VIDEO, 
         num_hands=1,
         min_hand_detection_confidence=0.5,
         min_hand_presence_confidence=0.5,
@@ -54,6 +57,7 @@ def run_dynamic_gesture(model_path="gesture_model.keras",
     color = (255, 255, 255)
     
     print(f"Prêt ! Verrouillage configuré à {DISPLAY_DURATION}s.")
+    start_time = time.time()
 
     while True:
         ret, frame = cap.read()
@@ -62,7 +66,8 @@ def run_dynamic_gesture(model_path="gesture_model.keras",
         frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        result = detector.detect(mp_image)
+        timestamp_ms = int((time.time() - start_time) * 1000)
+        result = detector.detect_for_video(mp_image, timestamp_ms)
 
         hand_detected = False
         if result.hand_landmarks:
