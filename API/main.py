@@ -32,14 +32,14 @@ def run():
 @app.get("/dynamic/run")
 def run():
 
-    script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_run.py")
+    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/dynamic_model_run.py")
     subprocess.Popen([sys.executable, script_path])
-    return {"message": "Lancement du modele statique !"}
+    return {"message": "Lancement du modele dynamique !"}
 
 @app.get("/dynamic/capture")
 def run():
 
     val1 = "Grab"
-    script_path = os.path.join(PYSCRIPT_DIR, "static_model/data_capture.py")
+    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/data_capture_dynamic.py")
     subprocess.Popen([sys.executable, script_path, val1])
     return {"message": "Lancement de la capture des mouvements !"}
