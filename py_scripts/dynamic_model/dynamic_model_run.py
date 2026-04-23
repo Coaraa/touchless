@@ -9,10 +9,15 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import time 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
+
 
 def configure_hand_detector():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(script_dir, "hand_landmarker.task")
+    model_path = get_path("data/hand_landmarker.task")
     
     base_options = python.BaseOptions(model_asset_path=model_path)
     
@@ -37,6 +42,9 @@ def normalize_landmarks(landmarks):
 def run_dynamic_gesture(model_path="gesture_model.keras", 
                            labels_path="gesture_labels_dynamic.pkl", 
                            seq_length=30):
+    
+    model_path = get_path(os.path.join("data", model_path))
+    labels_path = get_path(os.path.join("data", labels_path))
     
     print("Chargement du modèle et des labels...")
     model = tf.keras.models.load_model(model_path)
