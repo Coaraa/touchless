@@ -8,6 +8,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import time 
+import pyautogui
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -138,6 +139,14 @@ def run_dynamic_gesture(model_path="gesture_model.keras",
                             stable_gesture = best_pred
                             last_detection_time = time.time() 
                             prediction_history.clear() 
+
+                            if "swipe" in stable_gesture.lower():
+                                pyautogui.hotkey('alt', 'tab')
+
+                            elif "zoom" in stable_gesture.lower():
+                                pyautogui.keyDown('ctrl')  
+                                pyautogui.scroll(500)      
+                                pyautogui.keyUp('ctrl')
                     
                     current_display_text = "Analyse du mouvement..."
                     color = (0, 165, 255)
