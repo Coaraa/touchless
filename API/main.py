@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import sys
 import os
 import subprocess
@@ -26,8 +26,22 @@ def run():
 
     val1 = "Grab"
     script_path = os.path.join(PYSCRIPT_DIR, "static_model/data_capture.py")
-    subprocess.Popen([sys.executable, script_path, val1])
-    return {"message": "Lancement de la capture des mouvements !"}
+
+    try:
+        # .run() attend que le processus se termine
+        result = subprocess.run(
+            [sys.executable, script_path, val1],
+            check=False  # On gère l'erreur manuellement via le returncode
+        )
+
+        # En général, 0 = Succès ou Fermeture normale (ESC)
+        if result.returncode == 0:
+            return {"status": "success", "message": "Capture terminée normalement."}
+        else:
+            return {"status": "error", "message": f"Le script a quitté avec le code {result.returncode}"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/dynamic/run")
 def run():

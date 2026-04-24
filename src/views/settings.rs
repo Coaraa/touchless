@@ -1,5 +1,12 @@
 use eframe::egui;
 use crate::app::{View, GestureState}; // Import de GestureState
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct ApiResponse {
+    status: String,
+    message: String,
+}
 
 #[derive(Default)]
 pub struct EditState {
@@ -20,7 +27,7 @@ fn get_emoji(name: &str) -> &str {
     }
 }
 
-pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditState, gestures: &mut Vec<GestureState>) {
+pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditState, gestures: &mut Vec<GestureState>, tx: std::sync::mpsc::Sender<String>) {
     let dark_bg = egui::Color32::from_rgb(26, 34, 44);
     let card_white = egui::Color32::from_rgb(248, 249, 250);
     let accent_dark = egui::Color32::from_rgb(33, 41, 54);
@@ -38,40 +45,33 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                     ui.label(format!("Catégorie : {}", edit_state.category));
                     ui.add_space(10.0);
 
-                    if ui.button(egui::RichText::new("Capturer les données").strong()).clicked() {
-                        // LOGIQUE : On trouve le geste et on le marque comme modifié
-                        if let Some(g) = gestures.iter_mut().find(|g| g.name == edit_state.gesture_name) {
-                            g.is_modified = true;
-                            println!("Lancement de la capture pour le geste {}", g.name);
+                    if ui.button("Capturer").clicked() {
+                        let gesture_to_edit = edit_state.gesture_name.clone();
+                        let cat_for_thread = if edit_state.category.to_lowercase() == "statique" { "static" } else { "dynamic" }.to_string();
 
-                            // On normalise en minuscule pour éviter les erreurs de majuscules (Static vs static)
-                            let category_api = if edit_state.category.to_lowercase() == "statique" {
-                                "static"
-                            } else {
-                                "dynamic"
-                            };
+                        let tx_thread = tx.clone(); // On clone l'émetteur pour le thread
 
-                            // On clone pour le thread
-                            let cat_for_thread = category_api.to_string();
+                        std::thread::spawn(move || {
+                            let url = format!("http://127.0.0.1:8000/{}/capture", cat_for_thread);
+                            let response = reqwest::blocking::get(url);
 
-                            std::thread::spawn(move || {
-                                // Utilisation de format! pour construire l'URL dynamiquement
-                                let url = format!("http://127.0.0.1:8000/{}/capture", cat_for_thread);
-
-                                println!("Lancement de la requête API : {}", url);
-
-                                let response = reqwest::blocking::get(url);
-
-                                match response {
-                                    Ok(res) => {
-                                        if let Ok(body) = res.text() {
-                                            println!("Réponse reçue : {}", body);
+                            match response {
+                                Ok(res) if res.status().is_success() => {
+                                    if let Ok(api_res) = res.json::<ApiResponse>() {
+                                        if api_res.status == "success" {
+                                            println!("API Succès : {}", api_res.message);
+                                            // On envoie la confirmation SEULEMENT si le status est "success"
+                                            let _ = tx_thread.send(gesture_to_edit);
+                                        } else {
+                                            println!("API Erreur logique : {}", api_res.message);
                                         }
+                                    } else {
+                                        println!("Erreur : Impossible de lire le JSON de l'API");
                                     }
-                                    Err(e) => println!("Erreur API : {}", e),
                                 }
-                            });
-                        }
+                                _ => println!("API Échec ou erreur réseau"),
+                            }
+                        });
                         edit_state.open = false;
                     }
 
@@ -119,7 +119,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                                 let static_gestures: Vec<&GestureState> = gestures.iter().filter(|g| g.category == "Statique").collect();
                                 ui.columns(3, |sub| {
                                     for (i, gesture) in static_gestures.iter().enumerate() {
-                                        draw_gesture_item(&mut sub[i], get_emoji(&gesture.name), &gesture.name, circle_blue, accent_dark, modified_gold, gesture.is_modified, edit_state, "Static");
+                                        draw_gesture_item(&mut sub[i], get_emoji(&gesture.name), &gesture.name, circle_blue, accent_dark, modified_gold, gesture.is_modified, edit_state, "Statique");
                                     }
                                 });
                             });
@@ -135,7 +135,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                                 let dynamic_gestures: Vec<&GestureState> = gestures.iter().filter(|g| g.category == "Dynamique").collect();
                                 ui.columns(3, |sub| {
                                     for (i, gesture) in dynamic_gestures.iter().enumerate() {
-                                        draw_gesture_item(&mut sub[i], get_emoji(&gesture.name), &gesture.name, circle_blue, accent_dark, modified_gold, gesture.is_modified, edit_state, "Dynamic");
+                                        draw_gesture_item(&mut sub[i], get_emoji(&gesture.name), &gesture.name, circle_blue, accent_dark, modified_gold, gesture.is_modified, edit_state, "Dynamique");
                                     }
                                 });
                             });
