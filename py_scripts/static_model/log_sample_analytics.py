@@ -17,7 +17,7 @@ ax2.set_ylabel("Active (0/1)")
 ax2.legend()
 
 ax6.plot(df["timestamp"], df["n_hands"], label="Number of hands")
-ax6.set_title("Model Activation")
+ax6.set_title("Number of Hands Over Time")
 ax6.set_ylabel("n_hands")
 ax6.legend()
 
