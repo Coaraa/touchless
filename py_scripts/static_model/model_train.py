@@ -6,9 +6,22 @@ from sklearn.metrics import accuracy_score, classification_report
 from xgboost import XGBClassifier
 import joblib
 from sklearn.metrics import pairwise_distances
+import os
 
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/static_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
 
 def train_gesture_model(data_file = "data/gesture_data", model_out="gesture_model_xgb.pkl", labels_out="gesture_labels.pkl"):
+
+    data_file = get_path(data_file)
+    model_out = get_path(model_out)
+    labels_out = get_path(labels_out)
+
     df = pd.read_csv(data_file)
 
     y = df["gesture"]
