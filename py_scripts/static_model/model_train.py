@@ -5,6 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
 from xgboost import XGBClassifier
 import joblib
+from sklearn.metrics import pairwise_distances
 import os
 
 # Configuration des chemins automatiques
@@ -46,6 +47,9 @@ def train_gesture_model(data_file = "data/gesture_data", model_out="gesture_mode
 
     model.fit(X_train, y_train,eval_set=[(X_val, y_val)],verbose=True)
 
+    print("Train gestures:", np.unique(y_train, return_counts=True))
+    print("Test gestures:", np.unique(y_test, return_counts=True))
+    print("Train/Test overlap:", np.intersect1d(X_train, X_test).size)
 
     y_pred = model.predict(X_test)
 
@@ -53,6 +57,10 @@ def train_gesture_model(data_file = "data/gesture_data", model_out="gesture_mode
     print("\nClassification Report:\n", classification_report(
         y_test, y_pred, target_names=label_encoder.classes_
     ))
+
+    dists = pairwise_distances(X_test, X_train)
+    print("Min distance test→train:", dists.min())
+    print("5th percentile distance:", np.percentile(dists.min(axis=1), 5))
 
     joblib.dump(model, model_out)
     joblib.dump(label_encoder, labels_out)

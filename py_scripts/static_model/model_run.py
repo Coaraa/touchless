@@ -145,13 +145,13 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
     if (n_hands == 1):
         model = joblib.load(model_path)
         label_encoder = joblib.load(labels_path)
-        camera_margin = 0.15
+        camera_margin = 0.20
         
     
     if (n_hands == 2):
         model = joblib.load(model_path_2h)
         label_encoder = joblib.load(labels_path_2h)
-        camera_margin - 0.45
+        camera_margin - 0.35
 
     base_options = python.BaseOptions(model_asset_path=hand_task_path)
     options = vision.HandLandmarkerOptions(
@@ -355,7 +355,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 
             if gesture_name == "oneHand":
                 n_hands = 1
-                camera_margin = 0.15
+                camera_margin = 0.20
                 model = joblib.load(model_path)
                 label_encoder = joblib.load(labels_path)
 
@@ -371,7 +371,7 @@ def run_gesture_mouse (model_path="gesture_model_xgb.pkl", labels_path="gesture_
 
             if gesture_name == "twoHand":
                 n_hands = 2
-                camera_margin = 0.45
+                camera_margin = 0.35
                 last_good_landmarks2 = None
                 model = joblib.load(model_path_2h)
                 label_encoder = joblib.load(labels_path_2h)
