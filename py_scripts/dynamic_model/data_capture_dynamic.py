@@ -108,7 +108,7 @@ def collect_dynamic_gesture(gesture_name, num_sequences=10, target_frames=30, ou
 
     while sequences_done < num_sequences:
         ret, frame = cap.read()
-        if not ret: break
+        if not ret: return 1
         
         frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
@@ -169,13 +169,19 @@ def collect_dynamic_gesture(gesture_name, num_sequences=10, target_frames=30, ou
                     print("Séquence trop courte ignorée.")
                     
         elif key == 27: # ESC
-            break
+            return 1
 
     cap.release()
     cv2.destroyAllWindows()
     print("Capture terminée !")
+    return 0
 
 if __name__ == "__main__":
     import sys
     g_name = sys.argv[1] if len(sys.argv) > 1 else "geste_test"
-    collect_dynamic_gesture(g_name, num_sequences=10, target_frames=30)
+    unsuccess = collect_dynamic_gesture(g_name, num_sequences=10, target_frames=30)
+
+    if unsuccess :
+        sys.exit(1)
+    else :
+        sys.exit(0)
