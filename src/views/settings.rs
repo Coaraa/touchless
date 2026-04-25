@@ -27,7 +27,7 @@ fn get_emoji(name: &str) -> &str {
     }
 }
 
-pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditState, gestures: &mut Vec<GestureState>, tx: std::sync::mpsc::Sender<String>) {
+pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditState, gestures: &mut Vec<GestureState>, tx: std::sync::mpsc::Sender<String>, is_training: &mut bool) {
     let dark_bg = egui::Color32::from_rgb(26, 34, 44);
     let card_white = egui::Color32::from_rgb(248, 249, 250);
     let accent_dark = egui::Color32::from_rgb(33, 41, 54);
@@ -52,7 +52,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                         let tx_thread = tx.clone(); // On clone l'émetteur pour le thread
 
                         std::thread::spawn(move || {
-                            let url = format!("http://127.0.0.1:8000/{}/capture", cat_for_thread);
+                            let url = format!("http://127.0.0.1:8000/{}/capture/{}", cat_for_thread, gesture_to_edit);
                             let response = reqwest::blocking::get(url);
 
                             match response {
@@ -74,7 +74,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                         });
                         edit_state.open = false;
                     }
-
+// A FAIRE : reinitialiser permet de mettre les gestes de base
                     if ui.button("Réinitialiser").clicked() {
                         if let Some(g) = gestures.iter_mut().find(|g| g.name == edit_state.gesture_name) {
                             g.is_modified = false;
@@ -144,9 +144,79 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
 
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        if ui.add(egui::Button::new(egui::RichText::new("Démarrer l'entraînement").color(egui::Color32::WHITE).size(18.0))
-                            .min_size(egui::vec2(300.0, 50.0)).rounding(25.0).fill(accent_dark)).clicked() {
-                            println!("Entraînement lancé pour les modèles modifiés !");
+
+                        // Vérification des changements
+                        let has_static_changes = gestures.iter().any(|g| (g.category == "Statique" || g.category == "Static") && g.is_modified);
+                        let has_dynamic_changes = gestures.iter().any(|g| (g.category == "Dynamique" || g.category == "Dynamic") && g.is_modified);
+
+                        let can_train = (has_static_changes || has_dynamic_changes) && !*is_training;
+
+                        let btn_text = if *is_training {
+                            "Entraînement en cours..."
+                        } else if !can_train {
+                            "Rien à entraîner"
+                        } else {
+                            "Démarrer l'entraînement"
+                        };
+
+                        let btn = egui::Button::new(egui::RichText::new(btn_text).color(egui::Color32::WHITE).size(18.0))
+                            .min_size(egui::vec2(300.0, 50.0))
+                            .rounding(25.0)
+                            .fill(if can_train { accent_dark } else { egui::Color32::GRAY });
+
+                        if ui.add_enabled(can_train, btn).clicked() {
+                            *is_training = true;
+
+                            if has_static_changes {
+                                let tx_thread = tx.clone();
+                                std::thread::spawn(move || {
+                                    let url = "http://127.0.0.1:8000/static/train";
+
+                                    // 1. On tente la requête
+                                    if let Ok(response) = reqwest::blocking::get(url) {
+                                        // 2. On vérifie le code HTTP et on tente de lire le JSON
+                                        if response.status().is_success() {
+                                            if let Ok(api_res) = response.json::<ApiResponse>() {
+                                                if api_res.status == "success" {
+                                                    println!("Succès API : {}", api_res.message);
+                                                    // On n'envoie le signal que si TOUT est OK
+                                                    let _ = tx_thread.send("TRAINING_DONE".to_string());
+                                                    return; // On sort proprement
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            if has_dynamic_changes {
+                                let tx_thread = tx.clone();
+                                std::thread::spawn(move || {
+                                    let url = "http://127.0.0.1:8000/dynamic/train";
+
+                                    // 1. On tente la requête
+                                    if let Ok(response) = reqwest::blocking::get(url) {
+                                        // 2. On vérifie le code HTTP et on tente de lire le JSON
+                                        if response.status().is_success() {
+                                            if let Ok(api_res) = response.json::<ApiResponse>() {
+                                                if api_res.status == "success" {
+                                                    println!("Succès API : {}", api_res.message);
+                                                    // On n'envoie le signal que si TOUT est OK
+                                                    let _ = tx_thread.send("TRAINING_DONE".to_string());
+                                                    return; // On sort proprement
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        }
+
+                        if *is_training {
+                            ui.add_space(10.0);
+                            ui.horizontal(|ui| {
+                                ui.spinner();
+                                ui.label("L'IA analyse vos gestes...");
+                            });
                         }
                     });
                 });
@@ -155,7 +225,6 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
     });
 }
 
-// La fonction draw_gesture_item reste identique à la précédente...
 fn draw_gesture_item(ui: &mut egui::Ui, emoji: &str, name: &str, circle_col: egui::Color32, accent_dark: egui::Color32, border_col: egui::Color32, is_modified: bool, edit_state: &mut EditState, category: &str) {
     ui.vertical_centered(|ui| {
         let mut btn = egui::Button::new(egui::RichText::new(emoji).size(30.0)).min_size(egui::vec2(70.0, 70.0)).rounding(35.0).fill(circle_col);

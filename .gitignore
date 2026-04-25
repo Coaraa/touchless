@@ -4,3 +4,5 @@
 
 /target
 /py_scripts/venv
+py_scripts/static_model/data
+py_scripts/dynamic_model/data

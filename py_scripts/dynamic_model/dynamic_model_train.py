@@ -9,8 +9,14 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Dropout, BatchNormalization
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
 
 def load_sequence_data(data_file="data/dynamic_gestures.csv", target_frames=30):
+    data_file = get_path(data_file)
     df = pd.read_csv(data_file)
     sequences = []
     labels = []
@@ -96,6 +102,10 @@ def build_1d_cnn(input_shape, num_classes):
 def train_dynamic_model(data_file="data/dynamic_gestures.csv",
                         model_out="gesture_model.keras",
                         labels_out="gesture_labels_dynamic.pkl"):
+
+    data_file = get_path(data_file)
+    model_out = get_path(model_out)
+    labels_out = get_path(labels_out)
 
     print("Chargement des séquences...")
     X, y = load_sequence_data(data_file, target_frames=30)
