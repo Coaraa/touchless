@@ -191,8 +191,22 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                             if has_dynamic_changes {
                                 let tx_thread = tx.clone();
                                 std::thread::spawn(move || {
-                                    let _ = reqwest::blocking::get("http://127.0.0.1:8000/dynamic/train");
-                                    let _ = tx_thread.send("TRAINING_DONE".to_string());
+                                    let url = "http://127.0.0.1:8000/dynamic/train";
+
+                                    // 1. On tente la requête
+                                    if let Ok(response) = reqwest::blocking::get(url) {
+                                        // 2. On vérifie le code HTTP et on tente de lire le JSON
+                                        if response.status().is_success() {
+                                            if let Ok(api_res) = response.json::<ApiResponse>() {
+                                                if api_res.status == "success" {
+                                                    println!("Succès API : {}", api_res.message);
+                                                    // On n'envoie le signal que si TOUT est OK
+                                                    let _ = tx_thread.send("TRAINING_DONE".to_string());
+                                                    return; // On sort proprement
+                                                }
+                                            }
+                                        }
+                                    }
                                 });
                             }
                         }
@@ -211,7 +225,6 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
     });
 }
 
-// La fonction draw_gesture_item reste identique à la précédente...
 fn draw_gesture_item(ui: &mut egui::Ui, emoji: &str, name: &str, circle_col: egui::Color32, accent_dark: egui::Color32, border_col: egui::Color32, is_modified: bool, edit_state: &mut EditState, category: &str) {
     ui.vertical_centered(|ui| {
         let mut btn = egui::Button::new(egui::RichText::new(emoji).size(30.0)).min_size(egui::vec2(70.0, 70.0)).rounding(35.0).fill(circle_col);
