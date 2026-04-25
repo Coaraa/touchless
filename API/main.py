@@ -1,3 +1,5 @@
+from xml.etree.ElementTree import tostring
+
 from fastapi import FastAPI, HTTPException
 import sys
 import os
@@ -23,12 +25,12 @@ def run():
     subprocess.Popen([sys.executable, script_path])
     return {"message": "Lancement du modele statique !"}
 
-@app.get("/static/capture")
-def run():
+@app.get("/static/capture/{geste}")
+def run(geste: str):
 
 # A FAIRE : modifier dynamiquement val1
 
-    val1 = "Grab"
+    val1 = geste
     script_path = os.path.join(PYSCRIPT_DIR, "static_model/data_capture.py")
 
     try:
@@ -104,12 +106,12 @@ def run():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/dynamic/capture")
-def run():
+@app.get("/dynamic/capture/{geste}")
+def run(geste : str):
 
 # A FAIRE : modifier dynamiquement val1
 
-    val1 = "Grab"
+    val1 = geste
     script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/data_capture_dynamic.py")
 
     try:

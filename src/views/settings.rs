@@ -52,7 +52,7 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                         let tx_thread = tx.clone(); // On clone l'émetteur pour le thread
 
                         std::thread::spawn(move || {
-                            let url = format!("http://127.0.0.1:8000/{}/capture", cat_for_thread);
+                            let url = format!("http://127.0.0.1:8000/{}/capture/{}", cat_for_thread, gesture_to_edit);
                             let response = reqwest::blocking::get(url);
 
                             match response {
