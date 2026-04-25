@@ -7,9 +7,17 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+# Configuration des chemins automatiques
+# BASE_DIR sera le dossier 'py_scripts/static_model/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_path(filename):
+    """Retourne le chemin absolu vers un fichier dans le même dossier que le script."""
+    return os.path.join(BASE_DIR, filename)
+
 def configure_hand_detector():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(script_dir, "hand_landmarker.task")
+    model_path = get_path("data/hand_landmarker.task")
     
     base_options = python.BaseOptions(model_asset_path=model_path)
     
@@ -77,6 +85,7 @@ def remove_old_gesture_data(gesture, output_file):
 
 def collect_dynamic_gesture(gesture_name, num_sequences=10, target_frames=30, output_file="data/dynamic_gestures.csv"):
     detector = configure_hand_detector()
+    output_file = get_path(output_file)
     setup_csv(output_file)
     remove_old_gesture_data(gesture_name, output_file)
 
