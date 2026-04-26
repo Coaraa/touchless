@@ -52,24 +52,39 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                         let tx_thread = tx.clone(); // On clone l'émetteur pour le thread
 
                         std::thread::spawn(move || {
+                            // 1. On crée un client capable d'attendre 5 minutes
+                            let client = reqwest::blocking::Client::builder()
+                                .timeout(std::time::Duration::from_secs(300))
+                                .build();
                             let url = format!("http://127.0.0.1:8000/{}/capture/{}", cat_for_thread, gesture_to_edit);
-                            let response = reqwest::blocking::get(url);
 
-                            match response {
-                                Ok(res) if res.status().is_success() => {
-                                    if let Ok(api_res) = res.json::<ApiResponse>() {
-                                        if api_res.status == "success" {
-                                            println!("API Succès : {}", api_res.message);
-                                            // On envoie la confirmation SEULEMENT si le status est "success"
-                                            let _ = tx_thread.send(gesture_to_edit);
-                                        } else {
-                                            println!("API Erreur logique : {}", api_res.message);
+                            match client {
+                                Ok(c) => {
+                                    // 2. On utilise ce client spécifique au lieu du 'get' par défaut
+                                    match c.get(url).send() {
+                                        Ok(res) if res.status().is_success() => {
+                                            if let Ok(api_res) = res.json::<ApiResponse>() {
+                                                if api_res.status == "success" {
+                                                    println!("API Succès : {}", api_res.message);
+                                                    let _ = tx_thread.send(gesture_to_edit);
+                                                } else {
+                                                    println!("API Erreur logique : {}", api_res.message);
+                                                }
+                                            } else {
+                                                println!("Erreur : Le JSON de l'API est invalide");
+                                            }
                                         }
-                                    } else {
-                                        println!("Erreur : Impossible de lire le JSON de l'API");
+                                        Ok(res) => println!("Le serveur a répondu avec une erreur : {}", res.status()),
+                                        Err(e) => {
+                                            if e.is_timeout() {
+                                                println!("ERREUR : Timeout de 5 minutes atteint !");
+                                            } else {
+                                                println!("ERREUR RÉSEAU : {:?}", e);
+                                            }
+                                        }
                                     }
                                 }
-                                _ => println!("API Échec ou erreur réseau"),
+                                Err(_) => println!("Impossible de créer le client HTTP"),
                             }
                         });
                         edit_state.open = false;
