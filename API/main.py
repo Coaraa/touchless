@@ -81,7 +81,7 @@ def run():
 @app.get("/dynamic/run")
 def run():
 
-    script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_train.py")
+    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/dynamic_model_train.py")
 
     try:
         # .run() attend que le processus se termine
