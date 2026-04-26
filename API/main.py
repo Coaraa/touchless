@@ -81,30 +81,10 @@ def run():
 @app.get("/dynamic/run")
 def run():
 
-    script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_train.py")
+    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/dynamic_model_run.py")
+    subprocess.Popen([sys.executable, script_path])
+    return {"message": "Lancement du modele dynamique !"}
 
-    try:
-        # .run() attend que le processus se termine
-        result1 = subprocess.run(
-            [sys.executable, script_path],
-            check=False  # On gère l'erreur manuellement via le returncode
-        )
-
-        result2 = subprocess.run(
-            [sys.executable, script_path, "data/gesture_data.csv", "gesture_model_xgb_2h.pkl", "gesture_labels_2h.pkl"],
-            check=False  # On gère l'erreur manuellement via le returncode
-        )
-
-        result = result1 or result2
-
-        # En général, 0 = Succès ou Fermeture normale (ESC)
-        if result.returncode == 0:
-            return {"status": "success", "message": "Capture terminée normalement."}
-        else:
-            return {"status": "error", "message": f"Le script a quitté avec le code {result.returncode}"}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/dynamic/capture/{geste}")
 def run(geste : str):
