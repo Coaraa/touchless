@@ -16,6 +16,12 @@ L'idée répond à un problème du quotidien : vouloir interagir avec un écran 
 * **Personnalisation** : L'utilisateur peut changer le geste ou l'association et un script détecte et enregistre le symbole de l'utilisateur.
 * **Entraînement sur mesure** : L'utilisateur peut cliquer sur un bouton d'entraînement pour réentraîner le modèle avec ses propres données.
 
+## 🛠️ Activation
+* Vous allez devoir créer un environnement python 3.12.7 pour lancé le projet. Le requirements.txt se trouve dans py_scripts.
+* Vous aurez aussi besoin de de la base de code RUST.
+* Une fois ceux-ci installé, nous avons mis à disposition des fichiers launch.sh(linux) et launch.ps1(windows) pour lancer l'application et l'API.
+
+
 ## 🛠️ Outils Technologiques
 
 * **Langages** : Python et Rust.
@@ -24,8 +30,8 @@ L'idée répond à un problème du quotidien : vouloir interagir avec un écran 
 
 ## 👥 L'équipe et Répartition des Tâches
 
-- BOEHM Marin
-- HABIÉ Yann
-- MONARQUE Vincent
-- SITHIDEJ Clara
-- TOURAINE Florian
+- BOEHM Marin: Modèle dynamique
+- HABIÉ Yann: Modèle dynamique
+- MONARQUE Vincent: Modèle statique
+- SITHIDEJ Clara: UI et API
+- TOURAINE Florian: UI et API
