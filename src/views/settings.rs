@@ -89,11 +89,32 @@ pub fn show(ctx: &egui::Context, current_view: &mut View, edit_state: &mut EditS
                         });
                         edit_state.open = false;
                     }
-// A FAIRE : reinitialiser permet de mettre les gestes de base
                     if ui.button("Réinitialiser").clicked() {
-                        if let Some(g) = gestures.iter_mut().find(|g| g.name == edit_state.gesture_name) {
-                            g.is_modified = false;
-                        }
+                        let gesture_to_reset = edit_state.gesture_name.clone();
+                        let tx_thread = tx.clone(); // On utilise ton canal existant
+
+                        // Déterminer la catégorie (statique ou dynamique)
+                        let category = if edit_state.category.to_lowercase() == "statique" { "static" } else { "dynamic" };
+
+                        std::thread::spawn(move || {
+                            let url = format!("http://127.0.0.1:8000/{}/reinitialiser/{}", category, gesture_to_reset);
+
+                            if let Ok(response) = reqwest::blocking::get(&url) {
+                                if response.status().is_success() {
+                                    if let Ok(api_res) = response.json::<ApiResponse>() {
+                                        if api_res.status == "success" {
+                                            println!("API Succès : {}", api_res.message);
+                                            let _ = tx_thread.send(format!("RESET:{}", gesture_to_reset));
+                                        } else {
+                                            println!("API Erreur logique : {}", api_res.message);
+                                        }
+                                    } else {
+                                        println!("Erreur : Le JSON de l'API est invalide");
+                                    }
+                                }
+                            }
+                        });
+
                         edit_state.open = false;
                     }
 
@@ -245,7 +266,9 @@ fn draw_gesture_item(ui: &mut egui::Ui, emoji: &str, name: &str, circle_col: egu
         let mut btn = egui::Button::new(egui::RichText::new(emoji).size(30.0)).min_size(egui::vec2(70.0, 70.0)).rounding(35.0).fill(circle_col);
         if is_modified { btn = btn.stroke(egui::Stroke::new(2.5, border_col)); }
         if ui.add(btn).clicked() {
-            edit_state.open = true;
+            if category == "Statique" {
+                edit_state.open = true;
+            }
             edit_state.gesture_name = name.to_string();
             edit_state.category = category.to_string();
         }
@@ -253,6 +276,9 @@ fn draw_gesture_item(ui: &mut egui::Ui, emoji: &str, name: &str, circle_col: egu
         let label_fill = if is_modified { border_col } else { accent_dark };
         let label = egui::Button::new(egui::RichText::new(name).size(12.0).color(egui::Color32::WHITE)).min_size(egui::vec2(70.0, 22.0)).rounding(20.0).fill(label_fill);
         if ui.add(label).clicked() {
+            if category == "Statique" {
+                edit_state.open = true;
+            }
             edit_state.open = true;
             edit_state.gesture_name = name.to_string();
             edit_state.category = category.to_string();

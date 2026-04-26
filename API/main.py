@@ -1,11 +1,9 @@
-from xml.etree.ElementTree import tostring
-
 from fastapi import FastAPI, HTTPException
+import pandas as pd
+import subprocess
 import sys
 import os
-import subprocess
 
-from scipy.constants import value
 
 # BASE_DIR sera le dossier 'py_scripts/static_model/'
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,47 +84,90 @@ def run():
     return {"message": "Lancement du modele dynamique !"}
 
 
-@app.get("/dynamic/capture/{geste}")
-def run(geste : str):
+# @app.get("/dynamic/capture/{geste}")
+# def run(geste : str):
+#
+# # A FAIRE : modifier dynamiquement val1
+#
+#     val1 = geste
+#     script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/data_capture_dynamic.py")
+#
+#     try:
+#         # .run() attend que le processus se termine
+#         result = subprocess.run(
+#             [sys.executable, script_path, val1],
+#             check=False  # On gère l'erreur manuellement via le returncode
+#         )
+#
+#         # En général, 0 = Succès ou Fermeture normale (ESC)
+#         if result.returncode == 0:
+#             return {"status": "success", "message": "Capture terminée normalement."}
+#         else:
+#             return {"status": "error", "message": f"Le script a quitté avec le code {result.returncode}"}
+#
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
-# A FAIRE : modifier dynamiquement val1
+# @app.get("/dynamic/train")
+# def run():
+#
+#     script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/dynamic_model_train.py")
+#
+#     try:
+#         # .run() attend que le processus se termine
+#         result1 = subprocess.run(
+#             [sys.executable, script_path],
+#             check=False  # On gère l'erreur manuellement via le returncode
+#         )
+#
+#         # En général, 0 = Succès ou Fermeture normale (ESC)
+#         if result1.returncode == 0:
+#             return {"status": "success", "message": "Capture terminée normalement."}
+#         else:
+#             return {"status": "error", "message": f"Le script a quitté avec le code {result1.returncode}"}
+#
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
-    val1 = geste
-    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/data_capture_dynamic.py")
+@app.get("/static/reinitialiser/{geste}")
+def reinitialiser_geste(geste: str):
+
+    data_path = os.path.join(PYSCRIPT_DIR, "static_model/data/gesture_data.csv")
+    default_path = os.path.join(PYSCRIPT_DIR, "static_model/data/gesture_data_default.csv")
 
     try:
-        # .run() attend que le processus se termine
+        if not os.path.exists(data_path) or not os.path.exists(default_path):
+            return {"status": "error", "message": "Fichiers de données introuvables."}
+
+        df_data = pd.read_csv(data_path)
+        df_default = pd.read_csv(default_path)
+
+        new_samples = df_default[df_default['gesture'] == geste]
+
+        if new_samples.empty:
+            return {"status": "error", "message": f"Le geste '{geste}' n'existe pas dans le fichier par défaut."}
+
+        df_data = df_data[df_data['gesture'] != geste]
+
+        df_final = pd.concat([df_data, new_samples], ignore_index=True)
+
+        df_final.to_csv(data_path, index=False)
+
+        script_path = os.path.join(PYSCRIPT_DIR, "static_model/model_train.py")
+
         result = subprocess.run(
-            [sys.executable, script_path, val1],
-            check=False  # On gère l'erreur manuellement via le returncode
-        )
-
-        # En général, 0 = Succès ou Fermeture normale (ESC)
-        if result.returncode == 0:
-            return {"status": "success", "message": "Capture terminée normalement."}
-        else:
-            return {"status": "error", "message": f"Le script a quitté avec le code {result.returncode}"}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/dynamic/train")
-def run():
-
-    script_path = os.path.join(PYSCRIPT_DIR, "dynamic_model/dynamic_model_train.py")
-
-    try:
-        # .run() attend que le processus se termine
-        result1 = subprocess.run(
             [sys.executable, script_path],
             check=False  # On gère l'erreur manuellement via le returncode
         )
 
         # En général, 0 = Succès ou Fermeture normale (ESC)
-        if result1.returncode == 0:
-            return {"status": "success", "message": "Capture terminée normalement."}
+        if result.returncode == 0:
+            return {
+                "status": "success",
+                "message": f"Le geste '{geste}' a été réinitialisé avec les valeurs par défaut."
+            }
         else:
-            return {"status": "error", "message": f"Le script a quitté avec le code {result1.returncode}"}
+            return {"status": "error", "message": f"Le script d'entrainement a quitté avec le code {result.returncode}"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "error", "message": str(e)}

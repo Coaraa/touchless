@@ -50,12 +50,20 @@ impl eframe::App for TouchlessApp {
         // --- LOGIQUE DE RÉCEPTION ---
         // On utilise 'msg' pour être cohérent avec ton test plus bas
         while let Ok(msg) = self.rx.try_recv() {
+            if msg.starts_with("RESET:") {
+                // On extrait le nom après "RESET:"
+                let g_name = &msg[6..];
+                if let Some(g) = self.gestures.iter_mut().find(|g| g.name == g_name) {
+                    g.is_modified = false; // On remet en gris/blanc
+                }
+            }
             if msg == "TRAINING_DONE" {
                 self.is_training = false;
                 for gesture in self.gestures.iter_mut() {
                     gesture.is_modified = false;
                 }
-            } else {
+            }
+            else {
                 // Si c'est un nom de geste, on marque comme modifié
                 if let Some(g) = self.gestures.iter_mut().find(|g| g.name == msg) {
                     g.is_modified = true;
