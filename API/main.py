@@ -62,7 +62,7 @@ def run():
         )
 
         result2 = subprocess.run(
-            [sys.executable, script_path, "data/gesture_data.csv", "gesture_model_xgb_2h.pkl", "gesture_labels_2h.pkl"],
+            [sys.executable, script_path, "data/gesture_data_2h.csv", "gesture_model_xgb_2h.pkl", "gesture_labels_2h.pkl"],
             check=False  # On gère l'erreur manuellement via le returncode
         )
 
